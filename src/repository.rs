@@ -62,4 +62,25 @@ impl TodoRepo {
 
         Ok(())
     }
+
+    pub fn update(
+        &mut self,
+        id: &Uuid,
+        text: Option<String>,
+        is_completed: Option<bool>,
+    ) -> Result<Todo, TodoRepoError> {
+        let todo = self.items.get_mut(id).ok_or(TodoRepoError::NotFound)?;
+
+        if let Some(is_completed) = is_completed {
+            todo.is_completed = is_completed;
+            self.num_completed_items += 1;
+            self.num_active_items -= 1;
+        }
+
+        if let Some(text) = text {
+            todo.text = text;
+        }
+
+        Ok(todo.clone())
+    }
 }
