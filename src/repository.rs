@@ -1,8 +1,6 @@
+use crate::models::{Todo, TodoListFilter, TodoToggleAction};
 use std::collections::HashMap;
-
 use uuid::Uuid;
-
-use crate::models::{Todo, TodoListFilter};
 
 // Enums
 pub enum TodoRepoError {
@@ -82,5 +80,30 @@ impl TodoRepo {
         }
 
         Ok(todo.clone())
+    }
+
+    pub fn delete_completed(&mut self) {
+        self.items.retain(|_, todo| !todo.is_completed);
+        self.num_all_items -= self.num_completed_items;
+        self.num_completed_items = 0;
+    }
+
+    pub fn toggle_completed(&mut self, action: &TodoToggleAction) {
+        let is_completed: bool = match action {
+            TodoToggleAction::Check => {
+                self.num_active_items = 0;
+                self.num_completed_items = self.num_all_items;
+                true
+            }
+            TodoToggleAction::Uncheck => {
+                self.num_completed_items = 0;
+                self.num_active_items = self.num_all_items;
+                false
+            }
+        };
+
+        for todo in self.items.values_mut() {
+            todo.is_completed = is_completed;
+        }
     }
 }
