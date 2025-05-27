@@ -3,11 +3,13 @@ use std::collections::HashMap;
 use uuid::Uuid;
 
 // Enums
+#[derive(Debug, PartialEq, Eq)]
 pub enum TodoRepoError {
     NotFound,
 }
 
 // Structs
+#[derive(Debug, Default)]
 pub struct TodoRepo {
     pub num_completed_items: u32,
     pub num_active_items: u32,
@@ -105,5 +107,19 @@ impl TodoRepo {
         for todo in self.items.values_mut() {
             todo.is_completed = is_completed;
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_get_non_existing_todo() {
+        let repo = TodoRepo::default();
+
+        let result_todo = repo.get(&Uuid::new_v4());
+
+        assert_eq!(result_todo, Err(TodoRepoError::NotFound));
     }
 }
