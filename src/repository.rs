@@ -39,4 +39,27 @@ impl TodoRepo {
 
         todos
     }
+
+    pub fn create(&mut self, text: impl Into<String>) -> Todo {
+        let todo = Todo::new(text);
+        self.items.insert(todo.id, todo.clone());
+
+        self.num_active_items += 1;
+        self.num_all_items += 1;
+
+        todo
+    }
+
+    pub fn delete(&mut self, id: &Uuid) -> Result<(), TodoRepoError> {
+        let old_todo = self.items.remove(id).ok_or(TodoRepoError::NotFound)?;
+
+        self.num_all_items -= 1;
+        if old_todo.is_completed {
+            self.num_completed_items -= 1;
+        } else {
+            self.num_active_items -= 1;
+        }
+
+        Ok(())
+    }
 }
