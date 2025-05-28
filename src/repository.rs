@@ -122,4 +122,12 @@ mod tests {
 
         assert_eq!(result_todo, Err(TodoRepoError::NotFound));
     }
+
+    #[test]
+    fn test_get_existing_todo() {
+        let mut repo = TodoRepo::default();
+        let todo = repo.create("Teste");
+
+        assert_eq!(Ok(todo.clone()), repo.get(&todo.id));
+    }
 }
