@@ -269,4 +269,21 @@ mod tests {
         assert_eq!(1, repo.num_all_items);
         assert!(!result.is_completed);
     }
+
+    #[test]
+    fn test_delete_completed_todos() {
+        let mut repo = TodoRepo::default();
+        let task_a = repo.create("Task A");
+        let task_b = repo.create("Task B");
+        let task_c = repo.create("Task C");
+
+        let _task_a = repo.update(&task_a.id, None, Some(true)).unwrap();
+        let _task_c = repo.update(&task_c.id, None, Some(true)).unwrap();
+
+        repo.delete_completed();
+        assert_eq!(0, repo.num_completed_items);
+        assert_eq!(1, repo.num_all_items);
+        assert_eq!(1, repo.num_active_items);
+        assert_eq!(vec![task_b.clone()], repo.list(&TodoListFilter::All));
+    }
 }
