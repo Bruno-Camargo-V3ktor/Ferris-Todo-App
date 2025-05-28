@@ -196,4 +196,22 @@ mod tests {
         assert_eq!(0, repo.num_completed_items);
         assert_eq!(2, repo.num_active_items);
     }
+
+    #[test]
+    fn test_delete_non_existing_todo() {
+        let mut repo = TodoRepo::default();
+
+        let delete_todo = repo.delete(&Uuid::new_v4());
+        assert_eq!(delete_todo, Err(TodoRepoError::NotFound));
+    }
+
+    #[test]
+    fn test_delete_one_todo() {
+        let mut repo = TodoRepo::default();
+        let todo = repo.create("Task A");
+
+        let result = repo.delete(&todo.id);
+        assert_eq!(result, Ok(()));
+        assert_eq!(0, repo.num_all_items);
+    }
 }
