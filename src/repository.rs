@@ -182,4 +182,18 @@ mod tests {
             repo.list(&TodoListFilter::Completed)
         );
     }
+
+    #[test]
+    fn test_repo_propreties() {
+        let mut repo = TodoRepo::default();
+        let mut todos = vec![repo.create("Task A"), repo.create("Task B")];
+        todos.reverse();
+
+        assert_eq!(todos, repo.list(&TodoListFilter::All));
+        assert_eq!(todos, repo.list(&TodoListFilter::Active));
+        assert_eq!(Vec::<Todo>::new(), repo.list(&TodoListFilter::Completed));
+        assert_eq!(2, repo.num_all_items);
+        assert_eq!(0, repo.num_completed_items);
+        assert_eq!(2, repo.num_active_items);
+    }
 }
