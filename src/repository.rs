@@ -144,4 +144,19 @@ mod tests {
         assert_eq!(empty_list, result_active);
         assert_eq!(empty_list, result_all);
     }
+
+    #[test]
+    fn test_list_filled_repo_active() {
+        let mut repo = TodoRepo::default();
+        let mut filled = vec![
+            repo.create("Task A"),
+            repo.create("Task B"),
+            repo.create("Task C"),
+        ];
+
+        filled.reverse();
+
+        assert_eq!(filled, repo.list(&TodoListFilter::Active));
+        assert_eq!(Vec::<Todo>::new(), repo.list(&TodoListFilter::Completed));
+    }
 }
