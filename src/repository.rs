@@ -130,4 +130,18 @@ mod tests {
 
         assert_eq!(Ok(todo.clone()), repo.get(&todo.id));
     }
+
+    #[test]
+    fn test_list_repo_empty() {
+        let repo = TodoRepo::default();
+        let empty_list: Vec<Todo> = Vec::new();
+
+        let result_completed = repo.list(&TodoListFilter::Completed);
+        let result_active = repo.list(&TodoListFilter::Active);
+        let result_all = repo.list(&TodoListFilter::All);
+
+        assert_eq!(empty_list, result_completed);
+        assert_eq!(empty_list, result_active);
+        assert_eq!(empty_list, result_all);
+    }
 }
