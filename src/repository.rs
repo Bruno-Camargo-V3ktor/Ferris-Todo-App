@@ -214,4 +214,23 @@ mod tests {
         assert_eq!(result, Ok(()));
         assert_eq!(0, repo.num_all_items);
     }
+
+    #[test]
+    fn test_update_non_existing_todo() {
+        let mut repo = TodoRepo::default();
+        let result = repo.update(&Uuid::new_v4(), Some("Task A".into()), None);
+
+        assert_eq!(result, Err(TodoRepoError::NotFound));
+    }
+
+    #[test]
+    fn test_update_one_existing_todo() {
+        let mut repo = TodoRepo::default();
+        let old_todo = repo.create("Task A");
+        let new_todo = repo
+            .update(&old_todo.id, Some("Task AB".into()), None)
+            .unwrap();
+
+        assert_ne!(old_todo, new_todo);
+    }
 }
