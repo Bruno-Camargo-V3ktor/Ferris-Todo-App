@@ -1,12 +1,13 @@
 use std::sync::Arc;
 
 use axum::{
+    extract::{Query, State},
     http::StatusCode,
     response::{IntoResponse, Response},
     routing::get_service,
     Router,
 };
-use models::{TodoListFilter, TodoToggleAction};
+use models::{Todo, TodoListFilter, TodoToggleAction};
 use repository::{TodoRepo, TodoRepoError};
 use tokio::sync::RwLock;
 use tower_http::{services::ServeDir, trace::TraceLayer};
@@ -28,6 +29,22 @@ pub struct AppState {
     pub selected_filter: TodoListFilter,
     pub toggle_action: TodoToggleAction,
     pub todo_repo: TodoRepo,
+}
+
+struct GetIndexResponse;
+
+struct ListTodosResponse {
+    num_completed_items: u32,
+    num_active_items: u32,
+    num_all_items: u32,
+    is_disabled_delete: bool,
+    is_disabled_toggle: bool,
+    action: TodoToggleAction,
+    items: Vec<Todo>,
+}
+
+struct ListTodosQuery {
+    pub filter: TodoListFilter,
 }
 
 // Impls
@@ -77,4 +94,15 @@ pub fn app(shared_state: SharedState) -> Router {
         )
         .layer(TraceLayer::new_for_http())
         .with_state(shared_state)
+}
+
+async fn get_index() -> Result<GetIndexResponse, AppError> {
+    Ok(GetIndexResponse)
+}
+
+async fn list_todo(
+    State(shared_state): State<SharedState>,
+    Query(ListTodosQuery { filter }): Query<ListTodosQuery>,
+) -> Result<ListTodosResponse, AppError> {
+    Err(AppError::TodoRepo(TodoRepoError::NotFound))
 }
