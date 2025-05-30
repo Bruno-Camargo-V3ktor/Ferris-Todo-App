@@ -1,11 +1,11 @@
 use std::sync::Arc;
 
 use axum::{
+    Router,
     extract::{Query, State},
     http::StatusCode,
     response::{IntoResponse, Response},
-    routing::get_service,
-    Router,
+    routing::get,
 };
 use models::{Todo, TodoListFilter, TodoToggleAction};
 use repository::{TodoRepo, TodoRepoError};
@@ -16,7 +16,7 @@ pub mod models;
 pub mod repository;
 
 // Types
-pub type SharedState = Arc<RwLock<AppError>>;
+pub type SharedState = Arc<RwLock<AppState>>;
 
 // Enums
 pub enum AppError {
@@ -78,19 +78,17 @@ impl IntoResponse for AppError {
 pub fn app(shared_state: SharedState) -> Router {
     Router::new()
         .nest_service("/assets", ServeDir::new("assets"))
-        .route("/", get_service(get_index))
+        .route("/", get(get_index))
         .route(
             "/todo",
-            get_service(list_todos)
-                .post_service(create_todo)
-                .patch_service(toggle_completed_todos)
-                .delete_service(delete_completed_todos),
+            get(list_todos)
+                .post(create_todo)
+                .patch(toggle_completed_todos)
+                .delete(delete_completed_todos),
         )
         .route(
             "/todo/:id",
-            get_service(edit_todo)
-                .patch_service(update_todo)
-                .delete_service(delete_todo),
+            get(edit_todo).patch(update_todo).delete(delete_todo),
         )
         .layer(TraceLayer::new_for_http())
         .with_state(shared_state)
@@ -100,9 +98,21 @@ async fn get_index() -> Result<GetIndexResponse, AppError> {
     Ok(GetIndexResponse)
 }
 
-async fn list_todo(
+async fn list_todos(
     State(shared_state): State<SharedState>,
     Query(ListTodosQuery { filter }): Query<ListTodosQuery>,
 ) -> Result<ListTodosResponse, AppError> {
-    Err(AppError::TodoRepo(TodoRepoError::NotFound))
+    shared_state.write().await.selected_filter = filter;
+    let state = shared_state.read().await;
+    let items = state.todo_repo.list(&filter);
+
+    Ok(ListTodosResponse {
+        num_completed_items: state.todo_repo.num_completed_items,
+        num_active_items: state.todo_repo.num_active_items,
+        num_all_items: state.todo_repo.num_all_items,
+        is_disabled_delete: state.todo_repo.num_completed_items == 0,
+        is_disabled_toggle: state.todo_repo.num_all_items == 0,
+        action: state.toggle_action,
+        items,
+    })
 }
