@@ -1,11 +1,11 @@
 use std::sync::Arc;
 
 use axum::{
-    Router,
     extract::{Query, State},
     http::StatusCode,
     response::{IntoResponse, Response},
     routing::get,
+    Router,
 };
 use models::{Todo, TodoListFilter, TodoToggleAction};
 use repository::{TodoRepo, TodoRepoError};
@@ -45,6 +45,20 @@ struct ListTodosResponse {
 
 struct ListTodosQuery {
     pub filter: TodoListFilter,
+}
+
+struct ToggleCompletedTodosResponse {
+    num_completed_items: u32,
+    num_active_items: u32,
+    num_all_items: u32,
+    is_disabled_delete: bool,
+    is_disabled_toggle: bool,
+    action: TodoToggleAction,
+    items: Vec<Todo>,
+}
+
+struct ToggleCompletedTodosQuery {
+    action: TodoToggleAction,
 }
 
 // Impls
@@ -107,6 +121,30 @@ async fn list_todos(
     let items = state.todo_repo.list(&filter);
 
     Ok(ListTodosResponse {
+        num_completed_items: state.todo_repo.num_completed_items,
+        num_active_items: state.todo_repo.num_active_items,
+        num_all_items: state.todo_repo.num_all_items,
+        is_disabled_delete: state.todo_repo.num_completed_items == 0,
+        is_disabled_toggle: state.todo_repo.num_all_items == 0,
+        action: state.toggle_action,
+        items,
+    })
+}
+
+async fn toggle_completed_todos(
+    State(shared_state): State<SharedState>,
+    Query(ToggleCompletedTodosQuery { action }): Query<ToggleCompletedTodosQuery>,
+) -> Result<ToggleCompletedTodosResponse, AppError> {
+    let mut state = shared_state.write().await;
+    state.toggle_action = match action {
+        TodoToggleAction::Uncheck => TodoToggleAction::Check,
+        TodoToggleAction::Check => TodoToggleAction::Uncheck,
+    };
+
+    state.todo_repo.toggle_completed(&action);
+    let items = state.todo_repo.list(&state.selected_filter);
+
+    Ok(ToggleCompletedTodosResponse {
         num_completed_items: state.todo_repo.num_completed_items,
         num_active_items: state.todo_repo.num_active_items,
         num_all_items: state.todo_repo.num_all_items,
