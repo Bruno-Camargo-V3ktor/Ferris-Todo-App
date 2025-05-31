@@ -96,7 +96,22 @@ struct DeleteTodoResponse {
     num_active_items: u32,
     num_all_items: u32,
     is_disabled_delete: bool,
+    is_disabled_toggle: bool,
     action: TodoToggleAction,
+}
+
+struct CreateTodoResponse {
+    num_completed_items: u32,
+    num_active_items: u32,
+    num_all_items: u32,
+    is_disabled_delete: bool,
+    is_disabled_toggle: bool,
+    action: TodoToggleAction,
+    item: Option<Todo>,
+}
+
+struct CreateTodoForm {
+    text: String,
 }
 
 // Impls
@@ -206,7 +221,7 @@ async fn delete_completed_todos(
         num_completed_items: state.todo_repo.num_completed_items,
         num_active_items: state.todo_repo.num_active_items,
         num_all_items: state.todo_repo.num_all_items,
-        is_disabled_delete: state.todo_repo.num_completed_items == 0,
+        is_disabled_delete: true,
         is_disabled_toggle: state.todo_repo.num_all_items == 0,
         action: state.toggle_action,
         items,
@@ -274,6 +289,32 @@ async fn delete_todo(
         num_active_items: state.todo_repo.num_active_items,
         num_all_items: state.todo_repo.num_all_items,
         is_disabled_delete: state.todo_repo.num_completed_items == 0,
+        is_disabled_toggle: state.todo_repo.num_all_items == 0,
         action: state.toggle_action,
+    })
+}
+
+async fn create_todo(
+    State(shared_state): State<SharedState>,
+    Form(CreateTodoForm { text }): Form<CreateTodoForm>,
+) -> Result<CreateTodoResponse, AppError> {
+    let mut state = shared_state.write().await;
+    let item = state.todo_repo.create(&text);
+
+    let item = if state.selected_filter == TodoListFilter::Completed {
+        None
+    } else {
+        Some(item)
+    };
+
+    state.toggle_action = TodoToggleAction::Check;
+    Ok(CreateTodoResponse {
+        num_completed_items: state.todo_repo.num_completed_items,
+        num_active_items: state.todo_repo.num_active_items,
+        num_all_items: state.todo_repo.num_all_items,
+        is_disabled_delete: state.todo_repo.num_completed_items == 0,
+        is_disabled_toggle: state.todo_repo.num_all_items == 0,
+        action: state.toggle_action,
+        item,
     })
 }
