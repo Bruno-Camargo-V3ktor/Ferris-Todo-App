@@ -1,16 +1,17 @@
 use std::sync::Arc;
 
 use axum::{
-    extract::{Query, State},
+    extract::{Path, Query, State},
     http::StatusCode,
     response::{IntoResponse, Response},
     routing::get,
-    Router,
+    Form, Router,
 };
 use models::{Todo, TodoListFilter, TodoToggleAction};
 use repository::{TodoRepo, TodoRepoError};
 use tokio::sync::RwLock;
 use tower_http::{services::ServeDir, trace::TraceLayer};
+use uuid::Uuid;
 
 pub mod models;
 pub mod repository;
@@ -69,6 +70,25 @@ struct DeletedCompletedTodosResponse {
     is_disabled_toggle: bool,
     action: TodoToggleAction,
     items: Vec<Todo>,
+}
+
+struct EditTodoResponse {
+    item: Todo,
+}
+
+struct UpdateTodoResponse {
+    num_completed_items: u32,
+    num_active_items: u32,
+    num_all_items: u32,
+    is_disabled_delete: bool,
+    is_disabled_toggle: bool,
+    action: TodoToggleAction,
+    item: Option<Todo>,
+}
+
+struct UpdateTodoForm {
+    is_completed: Option<bool>,
+    text: Option<String>,
 }
 
 // Impls
@@ -182,5 +202,48 @@ async fn delete_completed_todos(
         is_disabled_toggle: state.todo_repo.num_all_items == 0,
         action: state.toggle_action,
         items,
+    })
+}
+
+async fn edit_todo(
+    State(shared_state): State<SharedState>,
+    Path(id): Path<Uuid>,
+) -> Result<EditTodoResponse, AppError> {
+    let item = shared_state.read().await.todo_repo.get(&id)?;
+
+    Ok(EditTodoResponse { item })
+}
+
+async fn update_todo(
+    State(shared_state): State<SharedState>,
+    Path(id): Path<Uuid>,
+    Form(todo_update): Form<UpdateTodoForm>,
+) -> Result<UpdateTodoResponse, AppError> {
+    let mut state = shared_state.write().await;
+    let item = state
+        .todo_repo
+        .update(&id, todo_update.text, todo_update.is_completed)?;
+
+    state.toggle_action = if state.todo_repo.num_completed_items == state.todo_repo.num_all_items {
+        TodoToggleAction::Uncheck
+    } else {
+        TodoToggleAction::Check
+    };
+
+    let item = match state.selected_filter {
+        TodoListFilter::Active if item.is_completed => None,
+        TodoListFilter::Active | TodoListFilter::All => Some(item),
+        TodoListFilter::Completed if item.is_completed => Some(item),
+        TodoListFilter::Completed => None,
+    };
+
+    Ok(UpdateTodoResponse {
+        num_completed_items: state.todo_repo.num_completed_items,
+        num_active_items: state.todo_repo.num_active_items,
+        num_all_items: state.todo_repo.num_all_items,
+        is_disabled_delete: state.todo_repo.num_completed_items == 0,
+        is_disabled_toggle: state.todo_repo.num_all_items == 0,
+        action: state.toggle_action,
+        item,
     })
 }
