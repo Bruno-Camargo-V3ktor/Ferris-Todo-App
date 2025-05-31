@@ -91,6 +91,14 @@ struct UpdateTodoForm {
     text: Option<String>,
 }
 
+struct DeleteTodoResponse {
+    num_completed_items: u32,
+    num_active_items: u32,
+    num_all_items: u32,
+    is_disabled_delete: bool,
+    action: TodoToggleAction,
+}
+
 // Impls
 impl Default for AppState {
     fn default() -> Self {
@@ -245,5 +253,27 @@ async fn update_todo(
         is_disabled_toggle: state.todo_repo.num_all_items == 0,
         action: state.toggle_action,
         item,
+    })
+}
+
+async fn delete_todo(
+    State(shared_state): State<SharedState>,
+    Path(id): Path<Uuid>,
+) -> Result<DeleteTodoResponse, AppError> {
+    let mut state = shared_state.write().await;
+    state.todo_repo.delete(&id)?;
+
+    state.toggle_action = if state.todo_repo.num_all_items == 0 {
+        TodoToggleAction::Check
+    } else {
+        TodoToggleAction::Uncheck
+    };
+
+    Ok(DeleteTodoResponse {
+        num_completed_items: state.todo_repo.num_completed_items,
+        num_active_items: state.todo_repo.num_active_items,
+        num_all_items: state.todo_repo.num_all_items,
+        is_disabled_delete: state.todo_repo.num_completed_items == 0,
+        action: state.toggle_action,
     })
 }
