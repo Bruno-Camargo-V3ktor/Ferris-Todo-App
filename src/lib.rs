@@ -61,6 +61,16 @@ struct ToggleCompletedTodosQuery {
     action: TodoToggleAction,
 }
 
+struct DeletedCompletedTodosResponse {
+    num_completed_items: u32,
+    num_active_items: u32,
+    num_all_items: u32,
+    is_disabled_delete: bool,
+    is_disabled_toggle: bool,
+    action: TodoToggleAction,
+    items: Vec<Todo>,
+}
+
 // Impls
 impl Default for AppState {
     fn default() -> Self {
@@ -145,6 +155,26 @@ async fn toggle_completed_todos(
     let items = state.todo_repo.list(&state.selected_filter);
 
     Ok(ToggleCompletedTodosResponse {
+        num_completed_items: state.todo_repo.num_completed_items,
+        num_active_items: state.todo_repo.num_active_items,
+        num_all_items: state.todo_repo.num_all_items,
+        is_disabled_delete: state.todo_repo.num_completed_items == 0,
+        is_disabled_toggle: state.todo_repo.num_all_items == 0,
+        action: state.toggle_action,
+        items,
+    })
+}
+
+async fn delete_completed_todos(
+    State(shared_state): State<SharedState>,
+) -> Result<DeletedCompletedTodosResponse, AppError> {
+    let mut state = shared_state.write().await;
+
+    state.todo_repo.delete_completed();
+    state.toggle_action = TodoToggleAction::Check;
+    let items = state.todo_repo.list(&state.selected_filter);
+
+    Ok(DeletedCompletedTodosResponse {
         num_completed_items: state.todo_repo.num_completed_items,
         num_active_items: state.todo_repo.num_active_items,
         num_all_items: state.todo_repo.num_all_items,
